@@ -1,0 +1,18 @@
+/* Berkeley Mono Font Faces - Fallback to system fonts */
+
+/* CSS Custom Properties for Berkeley Mono Design System */
+:root {
+    /* Engineering precision spacing */
+    --space-unit: 8px;
+    --space-xs: calc(var(--space-unit) * 1);
+    --space-sm: calc(var(--space-unit) * 2);
+    --space-md: calc(var(--space-unit) * 3);
+    --space-lg: calc(var(--space-unit) * 4);
+    --space-xl: calc(var(--space-unit) * 6);
+    --space-2xl: calc(var(--space-unit) * 8);
+
+    /* Line heights for optimal readability */
+    --line-height-tight: 1.2;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+}

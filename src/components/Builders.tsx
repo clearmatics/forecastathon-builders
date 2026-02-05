@@ -1,4 +1,14 @@
 import React from 'react'
+import clsx from 'clsx'
+import {
+    useProductsWithOutcomeSpacesQuery,
+    groupProductsByOutcomeSpace,
+    type OutcomeSpaceGroup,
+} from '../hooks/useOutcomeSpaces'
+import type { ProductWithOutcomeSpace } from '../services/graphql/queries'
+
+const SUB_TITLE_TEXT_COLOR = 'text-zinc-400'
+const HEROSECTIONCONTAINER = 'max-w-7xl mx-auto'
 
 const Builders: React.FC = () => {
     return (
@@ -65,6 +75,9 @@ const Builders: React.FC = () => {
                     </div>
                 </div>
             </section>
+
+            {/* Browse Markets Section */}
+            <OutcomeSpacesSection />
 
             {/* What You Can Build */}
             <section className="py-20 relative">
@@ -191,6 +204,208 @@ const Builders: React.FC = () => {
         </div>
     )
 }
+
+// Outcome Spaces Section Component
+const OutcomeSpacesSection: React.FC = () => {
+    const { data: products, isLoading, error } = useProductsWithOutcomeSpacesQuery()
+
+    // Group products by fspType and then by outcomeSpace
+    const groupedData = React.useMemo(() => {
+        if (!products) return []
+        return groupProductsByOutcomeSpace(products)
+    }, [products])
+
+    const fspTypeLabels: Record<string, string> = {
+        scalar: 'Scalar Markets',
+        binary: 'Binary Markets',
+        ternary: 'Ternary Markets',
+        other: 'Other Markets',
+    }
+
+    const fspTypeDescriptions: Record<string, string> = {
+        scalar: 'Continuous value outcomes with linear payoffs',
+        binary: 'Yes/No outcomes with binary payoffs',
+        ternary: 'Three-outcome markets',
+        other: 'Other market types',
+    }
+
+    if (error) {
+        return null
+    }
+
+    return (
+        <section className="py-24 bg-zinc-950 relative overflow-hidden">
+            <div className="absolute inset-0 opacity-[0.04]">
+                <div className="absolute inset-0" style={{
+                    backgroundImage: `radial-gradient(circle at 2px 2px, rgba(255,89,0,0.7) 1px, transparent 0)`,
+                    backgroundSize: '40px 40px'
+                }} />
+            </div>
+
+            <div className={clsx(HEROSECTIONCONTAINER, 'px-4 relative')}>
+                <div className="text-center mb-16">
+                    <span className="inline-block px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] bg-bloomberg-orange/10 text-bloomberg-orange border border-bloomberg-orange/30 mb-4">
+                        Current Products
+                    </span>
+                    <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4">
+                        Browse Markets
+                    </h2>
+                    <p className={clsx('max-w-2xl mx-auto', SUB_TITLE_TEXT_COLOR)}>
+                        Explore our current products grouped by outcome space
+                    </p>
+                </div>
+
+                {isLoading ? (
+                    <div className="flex justify-center items-center py-16">
+                        <div className="w-8 h-8 border-2 border-bloomberg-orange border-t-transparent rounded-full animate-spin" />
+                    </div>
+                ) : (
+                    <div className="space-y-16">
+                        {groupedData.map(({ fspType, outcomeSpaceGroups }) => (
+                            <div key={fspType}>
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="w-10 h-10 bg-bloomberg-orange/10 border border-bloomberg-orange/30 flex items-center justify-center text-bloomberg-orange">
+                                        {fspType === 'scalar' && <ScalarIcon />}
+                                        {fspType === 'binary' && <BinaryIcon />}
+                                        {fspType === 'ternary' && <TernaryIcon />}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold">{fspTypeLabels[fspType] || fspType}</h3>
+                                        <p className={clsx('text-sm', SUB_TITLE_TEXT_COLOR)}>
+                                            {fspTypeDescriptions[fspType] || ''}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {outcomeSpaceGroups.map((group) => (
+                                        <OutcomeSpaceCard key={group.outcomeSpace.id} group={group} />
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </section>
+    )
+}
+
+// Outcome Space Card Component
+const OutcomeSpaceCard: React.FC<{ group: OutcomeSpaceGroup }> = ({ group }) => {
+    const { outcomeSpace, products } = group
+
+    return (
+        <div className="group relative">
+            {/* Shadow offset */}
+            <div className="absolute inset-0 bg-bloomberg-orange/10 translate-x-2 translate-y-2 group-hover:translate-x-3 group-hover:translate-y-3 transition-transform duration-300" />
+
+            <div className="relative border border-zinc-800 bg-black p-6 hover:border-bloomberg-orange transition-all duration-300 h-full flex flex-col">
+                {/* Type badge and product count */}
+                <div className="flex items-center justify-between mb-4">
+                    <span className="px-2 py-1 text-xs font-bold uppercase tracking-wider bg-bloomberg-orange/10 text-bloomberg-orange border border-bloomberg-orange/30">
+                        {outcomeSpace.fspType}
+                    </span>
+                    <span className={clsx('text-xs', SUB_TITLE_TEXT_COLOR)}>
+                        {products.length} product{products.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
+
+                {/* Description */}
+                <p className="font-medium mb-4 line-clamp-2">
+                    {outcomeSpace.description}
+                </p>
+
+                {/* Products list */}
+                <div className="mb-4 flex-grow">
+                    <div className="flex flex-wrap gap-2">
+                        {products.map((product) => (
+                            <ProductChip key={product.id} product={product} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Metadata */}
+                <div className="space-y-2 text-sm border-t border-zinc-800 pt-4 mt-auto">
+                    {outcomeSpace.units && (
+                        <div className="flex items-center gap-2">
+                            <span className={clsx('text-xs uppercase tracking-wider', SUB_TITLE_TEXT_COLOR)}>Units:</span>
+                            <span className="text-xs">{outcomeSpace.units}</span>
+                        </div>
+                    )}
+                    {outcomeSpace.frequency && (
+                        <div className="flex items-center gap-2">
+                            <span className={clsx('text-xs uppercase tracking-wider', SUB_TITLE_TEXT_COLOR)}>Frequency:</span>
+                            <span className="text-xs capitalize">{outcomeSpace.frequency}</span>
+                        </div>
+                    )}
+                    {outcomeSpace.sourceName && (
+                        <div className="flex items-center gap-2">
+                            <span className={clsx('text-xs uppercase tracking-wider', SUB_TITLE_TEXT_COLOR)}>Source:</span>
+                            {outcomeSpace.sourceUri ? (
+                                <a
+                                    href={outcomeSpace.sourceUri}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-bloomberg-orange hover:underline truncate max-w-[180px]"
+                                >
+                                    {outcomeSpace.sourceName}
+                                </a>
+                            ) : (
+                                <span className="text-xs truncate max-w-[180px]">{outcomeSpace.sourceName}</span>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Hover border effect */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-bloomberg-orange scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+            </div>
+        </div>
+    )
+}
+
+// Product Chip Component
+const ProductChip: React.FC<{ product: ProductWithOutcomeSpace }> = ({ product }) => {
+    const referenceDate = product.extendedMetadata?.outcomePoint?.referenceDate
+    const tradeUrl = import.meta.env.VITE_AFP_WEB_APP
+        ? `${import.meta.env.VITE_AFP_WEB_APP}/trade/${product.symbol}`
+        : `https://app.forecastathon.com/trade/${product.symbol}`
+
+    return (
+        <a
+            href={tradeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 hover:border-bloomberg-orange hover:bg-bloomberg-orange/5 transition-all text-xs font-mono"
+        >
+            <span className="font-semibold">{product.symbol}</span>
+            {referenceDate && (
+                <span className={clsx('text-[10px]', SUB_TITLE_TEXT_COLOR)}>
+                    {new Date(referenceDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+            )}
+        </a>
+    )
+}
+
+// Icons
+const ScalarIcon = () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    </svg>
+)
+
+const BinaryIcon = () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+)
+
+const TernaryIcon = () => (
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+)
 
 const GithubIcon = () => (
     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
